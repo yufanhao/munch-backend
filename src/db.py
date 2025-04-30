@@ -97,7 +97,7 @@ class User(db.Model):
     foods = db.relationship(
         "Food", secondary=user_food_association_table, back_populates="users"
     )
-    favorite_foods = db.relationship(
+    favorite_foods = db.rexlationship(
         "Food", secondary=favorites_table, back_populates="favorited_by"
     )
 
