@@ -1,7 +1,7 @@
 from db import db
 from flask import Flask, request
 import json
-from db import Restaurant, User, Food
+from db import Restaurant, User, Food, UserFoodReview
 
 
 app = Flask(__name__)
@@ -151,10 +151,16 @@ def create_food(restaurant_id):
     name = body.get("name")
     price = body.get("price")
     category = body.get("category")
+    img_url = body.get("img_url")
     if name is None or price is None or category is None:
         return json.dumps({"error": "Invalid input"}), 400
     new_food = Food(
-        name=name, price=price, category=category, restaurant_id=restaurant_id
+        name=name,
+        price=price,
+        category=category,
+        img_url=img_url,
+        avg_rating=0,
+        restaurant_id=restaurant_id,
     )
     db.session.add(new_food)
     db.session.commit()
@@ -182,10 +188,18 @@ def add_food_to_user(user_id):
         return json.dumps({"error": "User not found!"}), 404
     body = json.loads(request.data)
     food_id = body.get("food_id")
+    rating = body.get("rating")
+    review = UserFoodReview(
+        user_id=user_id, food_id=food_id, rating=rating, review=body.get("review")
+    )
     food = Food.query.filter_by(id=food_id).first()
     if food is None:
         return json.dumps({"error": "Food not found!"}), 404
+    review_count = UserFoodReview.query.filter_by(food_id=food_id).count()
+    avg_rating = (food.avg_rating * review_count + rating) / (review_count + 1)
+    food.update_avg_rating(avg_rating)
     user.foods.append(food)
+    db.session.add(review)
     db.session.commit()
     return json.dumps(user.serialize()), 200
 
@@ -219,8 +233,6 @@ def get_favorites(user_id):
 
     favorited = [food.serialize() for food in user.favorite_foods]
     return json.dumps({"favorited_foods": favorited}), 200
-
-
 
 
 if __name__ == "__main__":

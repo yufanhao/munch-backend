@@ -52,9 +52,11 @@ class Food(db.Model):
     price = db.Column(db.Float, nullable=False)
     category = db.Column(db.String, nullable=False)
     image_url = db.Column(db.String, nullable=False)
+    avg_rating = db.Column(db.Integer, nullable=False)
     restaurant_id = db.Column(
         db.Integer, db.ForeignKey("restaurants.id"), nullable=False
     )
+    user_reviews = db.relationship("UserFoodReview", back_populates="food")
     users = db.relationship(
         "User", secondary=user_food_association_table, back_populates="foods"
     )
@@ -67,6 +69,13 @@ class Food(db.Model):
         self.price = kwargs.get("price", 0)
         self.category = kwargs.get("category", 0)
         self.restaurant_id = kwargs.get("restaurant_id", 0)
+        self.image_url = kwargs.get("image_url", "")
+        self.avg_rating = kwargs.get("avg_rating", "")
+
+    def update_avg_rating(self, new_avg_rating):
+        reviews = UserFoodReview.query.filter_by(food_id=self.id).all()
+        self.avg_rating = new_avg_rating
+        db.session.commit()
 
     def serialize(self):
         return {
@@ -75,6 +84,7 @@ class Food(db.Model):
             "price": self.price,
             "category": self.category,
             "image_url": self.image_url,
+            "avg_rating": self.avg_rating,
             "restaurant": Restaurant.query.filter_by(id=self.restaurant_id)
             .first()
             .simple_serialize(),
@@ -86,7 +96,8 @@ class Food(db.Model):
             "name": self.name,
             "price": self.price,
             "category": self.category,
-            "image_url" : self.image_url,
+            "image_url": self.image_url,
+            "avg_rating": self.avg_rating,
         }
 
 
@@ -97,11 +108,14 @@ class User(db.Model):
     password = db.Column(db.String, nullable=False)
     email = db.Column(db.String, nullable=False)
     phone = db.Column(db.Integer, nullable=False)
-    venmo = db.Column(db.String,nullable=False)
+    venmo = db.Column(db.String, nullable=False)
+
+    food_reviews = db.relationship("UserFoodReview", back_populates="user")
+
     foods = db.relationship(
         "Food", secondary=user_food_association_table, back_populates="users"
     )
-    favorite_foods = db.rexlationship(
+    favorite_foods = db.relationship(
         "Food", secondary=favorites_table, back_populates="favorited_by"
     )
 
@@ -110,6 +124,7 @@ class User(db.Model):
         self.password = kwargs.get("password", "")  # should probably encrypt
         self.email = kwargs.get("email", "")
         self.phone = kwargs.get("phone", 0)
+        self.venmo = kwargs.get("venmo", "")
 
     def serialize(self):
         return {
@@ -117,7 +132,26 @@ class User(db.Model):
             "username": self.username,
             "email": self.email,
             "phone": self.phone,
-            "venmo" : self.venmo,
+            "venmo": self.venmo,
             "foods": [food.simple_serialize() for food in self.foods],
             "favorites": [food.simple_serialize() for food in self.favorite_foods],
+            "reviews": [
+                {
+                    "food": review.food.simple_serialize(),
+                    "rating": review.rating,
+                    "review": review.review,
+                }
+                for review in self.food_reviews
+            ],
         }
+
+
+class UserFoodReview(db.Model):
+    __tablename__ = "user_food_reviews"
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), primary_key=True)
+    food_id = db.Column(db.Integer, db.ForeignKey("foods.id"), primary_key=True)
+    rating = db.Column(db.Integer, nullable=False)
+    review = db.Column(db.String, nullable=False)
+
+    user = db.relationship("User", back_populates="food_reviews")
+    food = db.relationship("Food", back_populates="user_reviews")
