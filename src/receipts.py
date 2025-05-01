@@ -3,7 +3,9 @@ from PIL import Image
 import pytesseract
 
 # Optional: set path to tesseract if not in PATH (Windows users)
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+pytesseract.pytesseract.tesseract_cmd = (
+    r"C:\Users\fanha\AppData\Local\Programs\Tesseract-OCR"
+)
 
 
 def extract_items_from_receipt(image_path):

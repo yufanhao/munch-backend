@@ -179,6 +179,17 @@ def get_food_by_id(food_id):
     return json.dumps(food.serialize()), 200
 
 
+# @app.route("/api/food/<int:food_id>/name")
+# def get_food_name_by_id(food_id):
+#     """
+#     Gets a food item's name by id from DB
+#     """
+#     food = Food.query.filter_by(id=food_id).first()
+#     if food is None:
+#         return json.dumps({"error": "Food not found!"}), 404
+#     return json.dumps({"name": food.name}), 200
+
+
 @app.route("/api/users/<int:user_id>/food/", methods=["POST"])
 def add_food_to_user(user_id):
     """
@@ -226,6 +237,35 @@ def get_reviews(food_id):
                 "profile_image": user.profile_image,
             }
         )
+    return json.dumps(all_reviews), 200
+
+
+@app.route("/api/food/<string:category>/reviews/")
+def get_reviews_by_category(category):
+    """
+    Gets all reviews associated with a food item
+    """
+    all_reviews = []
+    foods = Food.query.filter_by(category=category).all()
+    if foods is None:
+        return json.dumps({"error": "Food not found!"}), 404
+
+    for food in foods:
+        reviews = UserFoodReview.query.filter_by(food_id=food.id).all()
+        if reviews is None:
+            return json.dumps({"error": "Reviews not found!"}), 404
+
+        for item in reviews:
+            user = item.user
+            all_reviews.append(
+                {
+                    "id": user.id,
+                    "username": user.username,
+                    "review": item.review,
+                    "rating": item.rating,
+                    "profile_image": user.profile_image,
+                }
+            )
     return json.dumps(all_reviews), 200
 
 
