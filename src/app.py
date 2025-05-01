@@ -39,6 +39,7 @@ def create_user():
     password = body.get("password")
     email = body.get("email")
     phone = body.get("phone")
+<<<<<<< HEAD
     profile_image = body.get("profile_image")
     if username is None or password is None or email is None or phone is None:
         return json.dumps({"error": "Invalid input"}), 400
