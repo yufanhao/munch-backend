@@ -51,6 +51,7 @@ class Food(db.Model):
     name = db.Column(db.String, nullable=False)
     price = db.Column(db.Float, nullable=False)
     category = db.Column(db.String, nullable=False)
+    image_url = db.Column(db.String, nullable=False)
     restaurant_id = db.Column(
         db.Integer, db.ForeignKey("restaurants.id"), nullable=False
     )
@@ -73,6 +74,7 @@ class Food(db.Model):
             "name": self.name,
             "price": self.price,
             "category": self.category,
+            "image_url": self.image_url,
             "restaurant": Restaurant.query.filter_by(id=self.restaurant_id)
             .first()
             .simple_serialize(),
@@ -84,6 +86,7 @@ class Food(db.Model):
             "name": self.name,
             "price": self.price,
             "category": self.category,
+            "image_url" : self.image_url,
         }
 
 
@@ -94,6 +97,7 @@ class User(db.Model):
     password = db.Column(db.String, nullable=False)
     email = db.Column(db.String, nullable=False)
     phone = db.Column(db.Integer, nullable=False)
+    venmo = db.Column(db.String,nullable=False)
     foods = db.relationship(
         "Food", secondary=user_food_association_table, back_populates="users"
     )
@@ -113,6 +117,7 @@ class User(db.Model):
             "username": self.username,
             "email": self.email,
             "phone": self.phone,
+            "venmo" : self.venmo,
             "foods": [food.simple_serialize() for food in self.foods],
             "favorites": [food.simple_serialize() for food in self.favorite_foods],
         }
