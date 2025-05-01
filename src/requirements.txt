@@ -19,3 +19,4 @@ pillow
 rich
 sentencepiece
 datasets
+beautifulsoup4

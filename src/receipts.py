@@ -8,8 +8,10 @@ import requests
 from rich import print
 from transformers import Qwen2VLForConditionalGeneration
 
+
 model_name = "Qwen/Qwen2-VL-7B-Instruct"
 model_class = Qwen2VLForConditionalGeneration
+
 
 model = outlines.models.transformers_vision(
     model_name,
@@ -41,17 +43,18 @@ def load_and_resize_image(image_path, max_size=1024):
 
 
 # need to get image from frontend
-image_path = "https://raw.githubusercontent.com/dottxt-ai/outlines/refs/heads/main/docs/cookbook/images/trader-joes-receipt.jpg"
-response = requests.get(image_path)
-with open("receipt.png", "wb") as f:
-    f.write(response.content)
-image = load_and_resize_image("receipt.png")
+#image_path = "https://raw.githubusercontent.com/dottxt-ai/outlines/refs/heads/main/docs/cookbook/images/trader-joes-receipt.jpg"
+#response = requests.get(image_path)
+#with open("receipt.png", "wb") as f:
+#    f.write(response.content)
+#image = load_and_resize_image("receipt.png")
+
+image_path = "/Users/jasonguo/Desktop/backend/munch-backend/src/pho_receipt.png"  # e.g., "my_receipts/receipt1.png"
+image = load_and_resize_image(image_path)
 
 
 class Item(BaseModel):
     name: str
-    quantity: Optional[int]
-    price_per_unit: Optional[float]
     total_price: Optional[float]
 
 
@@ -61,7 +64,9 @@ class ReceiptSummary(BaseModel):
     store_number: Optional[int]
     items: List[Item]
     tax: Optional[float]
+    tips: Optional[float]
     total: Optional[float]
+    payment_total: Optional[float]
     date: Optional[str] = Field(
         pattern=r"\d{4}-\d{2}-\d{2}", description="Date in the format YYYY-MM-DD"
     )
@@ -83,7 +88,8 @@ messages = [
                 "type": "text",
                 "text": f"""You are an expert at extracting information from receipts.
                 Please extract the information from the receipt. Be as detailed as possible --
-                missing or misreporting information is a crime.
+                missing or misreporting information is a crime. Be sure to include Tips and Payment Total. Duplicate items 
+                should be accounted for and listed separately.
 
                 Return the information in the following JSON schema:
                 {ReceiptSummary.model_json_schema()}
@@ -123,7 +129,7 @@ thread = threading.Thread(target=run_model)
 thread.start()
 
 # Show a simple progress indicator
-timeout = 120  # seconds
+timeout = 600  # seconds
 start_time = time.time()
 print("Generating", end="", flush=True)
 
