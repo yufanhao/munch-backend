@@ -39,7 +39,6 @@ def create_user():
     password = body.get("password")
     email = body.get("email")
     phone = body.get("phone")
-<<<<<<< HEAD
     profile_image = body.get("profile_image")
     if username is None or password is None or email is None or phone is None:
         return json.dumps({"error": "Invalid input"}), 400
@@ -67,7 +66,7 @@ def delete_user_by_id(user_id):
     """
     user = User.query.filter_by(id=user_id).first()
     if user is None:
-        return json.dumps({"error": 404})
+        return json.dumps({"error": "User not found!"}), 404
     db.session.delete(user)
     db.session.commit()
     return json.dumps(user.serialize()), 200
@@ -121,10 +120,24 @@ def delete_restaurant_by_id(restaurant_id):
     """
     restaurant = User.query.filter_by(id=restaurant_id).first()
     if restaurant is None:
-        return json.dumps({"error": 404})
+        return json.dumps({"error": "Restaurant not found!"}), 404
     db.session.delete(restaurant)
     db.session.commit()
     return json.dumps(restaurant.serialize()), 200
+
+
+@app.route("/api/restaurants/<int:restaurant_id>/menu/")
+def get_menu(restaurant_id):
+    """
+    Gets all food items on a restaurant's menu
+    """
+    restaurant = Restaurant.query.filter_by(id=restaurant_id).first()
+    menu = []
+    if restaurant is None:
+        return json.dumps({"error": "Restaurant not found!"}), 404
+    for food in restaurant.menu:
+        menu.append(food.simple_serialize())
+    return json.dumps(menu), 200
 
 
 # Food endpoints
@@ -180,15 +193,15 @@ def get_food_by_id(food_id):
     return json.dumps(food.serialize()), 200
 
 
-# @app.route("/api/food/<int:food_id>/name")
-# def get_food_name_by_id(food_id):
-#     """
-#     Gets a food item's name by id from DB
-#     """
-#     food = Food.query.filter_by(id=food_id).first()
-#     if food is None:
-#         return json.dumps({"error": "Food not found!"}), 404
-#     return json.dumps({"name": food.name}), 200
+@app.route("/api/food/<int:food_id>/name")
+def get_food_name_by_id(food_id):
+    """
+    Gets a food item's name by id from DB
+    """
+    food = Food.query.filter_by(id=food_id).first()
+    if food is None:
+        return json.dumps({"error": "Food not found!"}), 404
+    return json.dumps({"name": food.name}), 200
 
 
 @app.route("/api/users/<int:user_id>/food/", methods=["POST"])
@@ -214,7 +227,7 @@ def add_food_to_user(user_id):
     user.foods.append(food)
     db.session.add(review)
     db.session.commit()
-    return json.dumps(user.serialize()), 200
+    return json.dumps(user.serialize()), 201
 
 
 @app.route("/api/food/<int:food_id>/reviews/")
@@ -239,6 +252,16 @@ def get_reviews(food_id):
             }
         )
     return json.dumps(all_reviews), 200
+
+
+@app.route("/api/food/categories/")
+def get_all_categories():
+    foods = Food.query.all()
+    categories = []
+    for food in foods:
+        if food.category not in categories:
+            categories.append(food.category)
+    return json.dumps(categories), 200
 
 
 @app.route("/api/food/<string:category>/reviews/")
