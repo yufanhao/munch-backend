@@ -39,7 +39,7 @@ def create_user():
     password = body.get("password")
     email = body.get("email")
     phone = body.get("phone")
-    if username is None or password is None or email is None or phone is None:
+    if username is None or password is None:
         return json.dumps({"error": "Invalid input"}), 400
     new_user = User(**body)
     db.session.add(new_user)
@@ -236,4 +236,4 @@ def get_favorites(user_id):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5001, debug=True)
