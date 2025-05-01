@@ -39,6 +39,7 @@ def create_user():
     password = body.get("password")
     email = body.get("email")
     phone = body.get("phone")
+    profile_image = body.get("profile_image")
     if username is None or password is None or email is None or phone is None:
         return json.dumps({"error": "Invalid input"}), 400
     new_user = User(**body)
@@ -181,7 +182,7 @@ def get_food_by_id(food_id):
 @app.route("/api/users/<int:user_id>/food/", methods=["POST"])
 def add_food_to_user(user_id):
     """
-    Assigns a food to a user
+    Assigns a food to a user, updates ratings and adds the user's review
     """
     user = User.query.filter_by(id=user_id).first()
     if user is None:
@@ -202,6 +203,30 @@ def add_food_to_user(user_id):
     db.session.add(review)
     db.session.commit()
     return json.dumps(user.serialize()), 200
+
+
+@app.route("/api/food/<int:food_id>/reviews/")
+def get_reviews(food_id):
+    """
+    Gets all reviews associated with a food item
+    """
+    all_reviews = []
+    reviews = UserFoodReview.query.filter_by(food_id=food_id).all()
+    if reviews is None:
+        return json.dumps({"error": "Reviews not found!"}), 404
+
+    for item in reviews:
+        user = item.user
+        all_reviews.append(
+            {
+                "id": user.id,
+                "username": user.username,
+                "review": item.review,
+                "rating": item.rating,
+                "profile_image": user.profile_image,
+            }
+        )
+    return json.dumps(all_reviews), 200
 
 
 @app.route("/api/users/<int:user_id>/favorites/", methods=["POST"])
