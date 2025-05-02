@@ -172,14 +172,14 @@ def create_food(restaurant_id):
     name = body.get("name")
     price = body.get("price")
     category = body.get("category")
-    img_url = body.get("img_url")
+    image_url = body.get("image_url")
     if name is None or price is None or category is None:
         return json.dumps({"error": "Invalid input"}), 400
     new_food = Food(
         name=name,
         price=price,
         category=category,
-        img_url=img_url,
+        image_url=image_url,
         avg_rating=0,
         restaurant_id=restaurant_id,
     )
@@ -196,6 +196,16 @@ def get_food_by_id(food_id):
     food = Food.query.filter_by(id=food_id).first()
     if food is None:
         return json.dumps({"error": "Food not found!"}), 404
+    return json.dumps(food.serialize()), 200
+
+
+@app.route("/api/food/<int:food_id>/", methods=["DELETE"])
+def delete_food_by_id(food_id):
+    food = Food.query.filter_by(id=food_id).first()
+    if food is None:
+        return json.dumps({"error": "Food not found!"}), 404
+    db.session.delete(food)
+    db.session.commit()
     return json.dumps(food.serialize()), 200
 
 
@@ -378,22 +388,18 @@ def scrape_pho_time_data(
 ):
     """Scrape restaurant and menu data from Pho Time using BeautifulSoup."""
     try:
-        # Send an HTTP request to the URL
         print(f"Accessing {url}...")
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         }
         response = requests.get(url, headers=headers)
 
-        # Check if the request was successful
         if response.status_code != 200:
             print(f"Failed to retrieve the page. Status code: {response.status_code}")
             return None
 
-        # Parse the HTML content
         soup = BeautifulSoup(response.text, "html.parser")
 
-        # Extract restaurant information
         restaurant_info = soup.find(class_="media-heading")
         if not restaurant_info:
             print("Could not find restaurant info section")
@@ -401,7 +407,6 @@ def scrape_pho_time_data(
 
         restaurant_name = restaurant_info.text.strip()
 
-        # Try to find the address
         restaurant_info = soup.find(class_="media-body")
         address_elem = restaurant_info.find(class_="restaurant_menu_info-addresss")
         restaurant_address = (
@@ -411,10 +416,8 @@ def scrape_pho_time_data(
         print(f"Restaurant: {restaurant_name}")
         print(f"Address: {restaurant_address}")
 
-        # Extract menu categories and items
         menu_data = []
 
-        # Find all menu categories
         categories = soup.find_all(
             class_="order_restaurant--restaurant_headings panel panel-default"
         )
@@ -430,32 +433,26 @@ def scrape_pho_time_data(
             )
             for item in menu_items:
                 try:
-                    # order_restaurant--menu_item_name
-                    # Extract item name
                     item_title = item.find(class_="order_restaurant--menu_item_name")
                     print(item_title.text.strip())
                     if not item_title:
                         continue
                     item_name = item_title.text.strip()
 
-                    # Extract price
                     price_elem = item.find(class_="menu_item_price")
                     print(price_elem.text.strip())
                     price_text = price_elem.text.strip() if price_elem else "0.0"
 
-                    # Extract numeric price using regex
                     price_match = re.search(r"\$(\d+\.\d+)", price_text)
                     if price_match:
                         item_price = float(price_match.group(1))
                     else:
-                        # Try to convert directly after removing $ symbol
                         try:
                             item_price = float(price_text.replace("$", "").strip())
                         except ValueError:
                             item_price = 0.0
 
-                    # Default rating
-                    avg_rating = 0  # Default average rating
+                    avg_rating = 0
 
                     menu_data.append(
                         {
@@ -491,7 +488,6 @@ def insert_into_database(data):
         return False
 
     try:
-        # Check if restaurant already exists
         existing_restaurant = Restaurant.query.filter_by(
             name=data["restaurant"]["name"]
         ).first()
@@ -502,18 +498,14 @@ def insert_into_database(data):
             )
             restaurant = existing_restaurant
         else:
-            # Create restaurant record
             restaurant = Restaurant(
                 name=data["restaurant"]["name"], address=data["restaurant"]["address"]
             )
 
-            # Add restaurant to session
             db.session.add(restaurant)
-            db.session.flush()  # Flush to get restaurant ID
+            db.session.flush()
 
-        # Create food items
         for item in data["menu_items"]:
-            # Check if food item already exists in this restaurant
             existing_food = Food.query.filter_by(
                 name=item["name"], restaurant_id=restaurant.id
             ).first()
@@ -526,7 +518,7 @@ def insert_into_database(data):
                 name=item["name"],
                 price=item["price"],
                 category=item["category"],
-                img_url=item["image_url"],  # Using image_url from scraper data
+                image_url=item["image_url"],
                 avg_rating=item["avg_rating"],
                 restaurant_id=restaurant.id,
             )
