@@ -10,8 +10,6 @@ from bs4 import BeautifulSoup
 import re
 import argparse
 
-##
-
 app = Flask(__name__)
 db_filename = "munch.db"
 
