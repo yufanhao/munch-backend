@@ -1,8 +1,0 @@
-Flask==2.2.2
-Flask-SQLAlchemy==3.0.2
-MarkupSafe==2.1.1
-requests==2.28.1
-SQLAlchemy==1.4.42
-urllib3==1.26.12
-datasets
-Werkzeug==2.2.2

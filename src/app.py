@@ -174,7 +174,7 @@ def get_all_food():
     foods = []
     for food in Food.query.all():
         foods.append(food.serialize())
-    return json.dumps({"food items": foods}), 200
+    return json.dumps({"food_items": foods}), 200
 
 
 @app.route("/api/restaurants/<int:restaurant_id>/food/", methods=["POST"])
@@ -262,6 +262,20 @@ def add_food_to_user(user_id):
     db.session.commit()
     return json.dumps(user.serialize()), 201
 
+@app.route("/api/food/reviews/", methods = ["POST"])
+def create_review():
+    data = request.get_json()
+
+    review = UserFoodReview(
+        user_id=data['user_id'],
+        food_id=data['food_id'],
+        rating=data['rating'],
+        review=data['review']
+    )
+    db.session.add(review)
+    db.session.commit()
+
+    return json.dumps({'message': 'Review created successfully'}), 201
 
 @app.route("/api/food/<int:food_id>/reviews/")
 def get_reviews(food_id):
@@ -297,7 +311,7 @@ def get_all_categories():
     for food in foods:
         if food.category not in categories:
             categories.append(food.category)
-    return json.dumps(categories), 200
+    return json.dumps({"categories": categories}), 200
 
 
 @app.route("/api/<string:category>/foods/")
