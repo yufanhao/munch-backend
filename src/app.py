@@ -1,8 +1,16 @@
 from db import db
 from flask import Flask, request
 import json
-from db import Restaurant, User, Food, UserFoodReview, Request
+from db import Restaurant, User, Food, UserFoodReview
+import urllib.parse
 
+## for scraper
+import requests
+from bs4 import BeautifulSoup
+import re
+import argparse
+
+##
 
 app = Flask(__name__)
 db_filename = "munch.db"
@@ -327,57 +335,239 @@ def get_favorites(user_id):
     return json.dumps({"favorited_foods": favorited}), 200
 
 
-# Request enpoints
-
-
-@app.route("/api/users/<int:user_id>/requests/received/")
-def get_received_requests(user_id):
+@app.route("/api/payment/<int:user_id>/")
+def send_pay_request(user_id):
     """
-    Gets all requests a user has received
+    Gets all favorited items of a user
     """
     user = User.query.filter_by(id=user_id).first()
     if user is None:
         return json.dumps({"error": "User not found!"}), 404
-    received_requests = [
-        received_request.serialize() for received_request in user.received_requests
-    ]
-    return json.dumps({"received_requests": received_requests}), 200
-
-
-@app.route("/api/users/<int:user_id>/requests/sent/")
-def get_sent_requests(user_id):
-    """
-    Gets all requests a user has sent
-    """
-    user = User.query.filter_by(id=user_id).first()
-    if user is None:
-        return json.dumps({"error": "User not found!"}), 404
-    sent_requests = [sent_request.serialize() for sent_request in user.sent_requests]
-    return json.dumps({"sent_requests": sent_requests}), 200
-
-
-@app.route("/api/users/<int:sender_id>/requests/create", methods=["POST"])
-def create_request(sender_id):
-    """
-    Creates a new request and assigns it to a user
-    """
     body = json.loads(request.data)
-    sender = User.query.filter_by(id=sender_id).first()
-    receiver_id = body.get("receiver_id")
-    receiver = User.query.filter_by(id=receiver_id).first()
-    if sender is None or receiver is None:
-        return json.dumps({"error": "User not found!"}), 404
+    recipient_username = body.get("recipient_username")
+    payment_amount = body.get("payment_amount")
+    message = body.get("message", "Payment")
+    encoded_note = urllib.parse.quote(message)
 
-    amount = body.get("amount")
-    message = body.get("message")
-    new_request = Request(
-        sender_id=sender_id, receiver_id=receiver_id, amount=amount, message=message
-    )
-    # sender.sent_requests.append(new_request)
-    db.session.add(new_request)
-    db.session.commit()
-    return json.dumps(new_request.serialize()), 201
+    link = f"https://venmo.com/{recipient_username}?txn=pay&amount={payment_amount}&note={encoded_note}"
+
+    # example :https://venmo.com/jasonguo1?txn=pay&amount=15&note=Your+payment+request
+
+    return json.dumps({"payment_link": link}), 200
+
+
+# New endpoint to run the scraper
+@app.route("/api/scrape/", methods=["POST"])
+def scrape_restaurant():
+    """
+    Runs the scraper to populate the database with Pho Time restaurant data
+    """
+    success = run_scraper()
+    if success:
+        return (
+            json.dumps({"success": "Restaurant data scraped and saved to database"}),
+            200,
+        )
+    else:
+        return json.dumps({"error": "Failed to scrape restaurant data"}), 500
+
+
+## end of routes
+
+
+def scrape_pho_time_data(
+    url="https://www.ithacatogo.com/order/restaurant/pho-time-vietnamese-menu/45",
+):
+    """Scrape restaurant and menu data from Pho Time using BeautifulSoup."""
+    try:
+        # Send an HTTP request to the URL
+        print(f"Accessing {url}...")
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
+        response = requests.get(url, headers=headers)
+
+        # Check if the request was successful
+        if response.status_code != 200:
+            print(f"Failed to retrieve the page. Status code: {response.status_code}")
+            return None
+
+        # Parse the HTML content
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        # Extract restaurant information
+        restaurant_info = soup.find(class_="media-heading")
+        if not restaurant_info:
+            print("Could not find restaurant info section")
+            return None
+
+        restaurant_name = restaurant_info.text.strip()
+
+        # Try to find the address
+        restaurant_info = soup.find(class_="media-body")
+        address_elem = restaurant_info.find(class_="restaurant_menu_info-addresss")
+        restaurant_address = (
+            address_elem.text.strip() if address_elem else "Unknown Address, Ithaca, NY"
+        )
+
+        print(f"Restaurant: {restaurant_name}")
+        print(f"Address: {restaurant_address}")
+
+        # Extract menu categories and items
+        menu_data = []
+
+        # Find all menu categories
+        categories = soup.find_all(
+            class_="order_restaurant--restaurant_headings panel panel-default"
+        )
+
+        for category in categories:
+            # print(category)
+            # category_name = category.find('h3').text.strip()
+            # print(f"\nCategory: {category_name}")
+
+            # Find menu items within this category
+            menu_items = category.find_all(
+                class_="order_restaurant--menu_item clearfix"
+            )
+            for item in menu_items:
+                try:
+                    # order_restaurant--menu_item_name
+                    # Extract item name
+                    item_title = item.find(class_="order_restaurant--menu_item_name")
+                    print(item_title.text.strip())
+                    if not item_title:
+                        continue
+                    item_name = item_title.text.strip()
+
+                    # Extract price
+                    price_elem = item.find(class_="menu_item_price")
+                    print(price_elem.text.strip())
+                    price_text = price_elem.text.strip() if price_elem else "0.0"
+
+                    # Extract numeric price using regex
+                    price_match = re.search(r"\$(\d+\.\d+)", price_text)
+                    if price_match:
+                        item_price = float(price_match.group(1))
+                    else:
+                        # Try to convert directly after removing $ symbol
+                        try:
+                            item_price = float(price_text.replace("$", "").strip())
+                        except ValueError:
+                            item_price = 0.0
+
+                    # Default rating
+                    avg_rating = 0  # Default average rating
+
+                    menu_data.append(
+                        {
+                            "name": item_name,
+                            "price": item_price,
+                            "category": "tbd",
+                            "description": "tbd",
+                            "image_url": "fakeurl",
+                            "avg_rating": avg_rating,
+                        }
+                    )
+
+                    print(f"  - {item_name}: ${item_price}")
+
+                except Exception as e:
+                    print(f"Error extracting menu item: {e}")
+                    continue
+
+        return {
+            "restaurant": {"name": restaurant_name, "address": restaurant_address},
+            "menu_items": menu_data,
+        }
+
+    except Exception as e:
+        print(f"An error occurred during scraping: {e}")
+        return None
+
+
+def insert_into_database(data):
+    """Insert scraped data into the database."""
+    if not data:
+        print("No data to insert into database.")
+        return False
+
+    try:
+        # Check if restaurant already exists
+        existing_restaurant = Restaurant.query.filter_by(
+            name=data["restaurant"]["name"]
+        ).first()
+
+        if False:
+            print(
+                f"Restaurant {data['restaurant']['name']} already exists. Skipping insert."
+            )
+            restaurant = existing_restaurant
+        else:
+            # Create restaurant record
+            restaurant = Restaurant(
+                name=data["restaurant"]["name"], address=data["restaurant"]["address"]
+            )
+
+            # Add restaurant to session
+            db.session.add(restaurant)
+            db.session.flush()  # Flush to get restaurant ID
+
+        # Create food items
+        for item in data["menu_items"]:
+            # Check if food item already exists in this restaurant
+            existing_food = Food.query.filter_by(
+                name=item["name"], restaurant_id=restaurant.id
+            ).first()
+
+            if existing_food:
+                print(f"Food item {item['name']} already exists. Skipping insert.")
+                continue
+
+            food = Food(
+                name=item["name"],
+                price=item["price"],
+                category=item["category"],
+                img_url=item["image_url"],  # Using image_url from scraper data
+                avg_rating=item["avg_rating"],
+                restaurant_id=restaurant.id,
+            )
+            db.session.add(food)
+
+        # Commit all changes
+        db.session.commit()
+        print(
+            f"Successfully added {data['restaurant']['name']} with menu items to database."
+        )
+        return True
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Database error: {e}")
+        return False
+
+
+def run_scraper():
+    """Run the scraper and insert data into the database."""
+    print("Starting scraper...")
+    scraped_data = scrape_pho_time_data()
+
+    if scraped_data:
+        print("\nInserting data into database...")
+        success = insert_into_database(scraped_data)
+        return success
+    else:
+        print("Scraping failed. No data to insert.")
+        return False
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run Flask app with optional scraper")
+    parser.add_argument("--scrape", action="store_true", help="Run scraper on startup")
+    args = parser.parse_args()
+
+    # Run the scraper if --scrape flag is provided
+    if args.scrape:
+        with app.app_context():
+            run_scraper()
     app.run(host="0.0.0.0", port=5000, debug=True)
