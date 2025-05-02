@@ -3,12 +3,17 @@ from flask import Flask, request
 import json
 from db import Restaurant, User, Food, UserFoodReview
 import urllib.parse
+import difflib
 
 ## for scraper
 import requests
 from bs4 import BeautifulSoup
 import re
 import argparse
+##
+
+from convert import get_closest_match
+from receiptparser import parse_receipt
 
 app = Flask(__name__)
 db_filename = "munch.db"
@@ -144,6 +149,16 @@ def get_menu(restaurant_id):
     for food in restaurant.menu:
         menu.append(food.simple_serialize())
     return json.dumps(menu), 200
+
+@app.route("/api/restaurants/<string:restaurant_name>/menu/")
+def get_restaurant_id_by_name(restaurant_name):
+    """
+    Gets the id of the restaurant based on the name
+    """
+    restaurant = Restaurant.query.filter_by(name = restaurant_name).first()
+    if restaurant is None:
+        return json.dumps({"error": "Restaurant not found!"}), 404
+    return json.dumps({"restaurant_id": restaurant.id}), 200
 
 
 # Food endpoints
@@ -368,9 +383,87 @@ def scrape_restaurant():
         )
     else:
         return json.dumps({"error": "Failed to scrape restaurant data"}), 500
+    
+# New endpoint to go from receipt item to db item
+@app.route("/api/convert/")
+def get_closest_item():
+    body = json.loads(request.data)
+    restaurant = body.get("restaurant")
+    item = body.get("item")
 
+    dbrestaurant, dbitem = convert(restaurant,item)
+    
+    return json.dumps({"restaurant":dbrestaurant, "item":dbitem})
+
+
+@app.route("/api/receipts/", methods=["POST"])
+def upload_receipt():
+    if 'image' not in request.files:
+        return {"error": "No image uploaded"}, 400
+
+    image_bytes = request.files['image'].read()
+    
+    try:
+        result = parse_receipt(image_bytes)
+
+        # If result is a string, parse it as JSON
+        if isinstance(result, str):
+            result = json.loads(result)
+
+        # Add item IDs
+        for idx, item in enumerate(result.get("items", []), start=1):
+            item["id"] = idx
+
+        # Add assigned_friends field
+        result["assigned_friends"] = []
+
+        return result, 200
+    except Exception as e:
+        return {"error": str(e)}, 500
 
 ## end of routes
+
+def convert(restaurant_name, item_name):
+    # Step 1: Get all restaurants and match name
+    all_restaurants = Restaurant.query.all()
+    restaurant_names = [r.name for r in all_restaurants]
+    best_restaurant_name = get_closest_match(restaurant_name, restaurant_names, context="restaurant names")
+
+    if not best_restaurant_name:
+        return None, None
+
+    matched_restaurant = Restaurant.query.filter_by(name=best_restaurant_name).first()
+    if matched_restaurant is None:
+        return None, None
+
+    # Step 2: Get menu and match item
+    menu_items = matched_restaurant.menu
+    item_names = [item.name for item in menu_items]
+    best_item_name = get_closest_match(item_name, item_names, context="food items from the restaurant menu")
+
+    return matched_restaurant.name, best_item_name
+
+
+def convert(restaurant_name, item_name):
+    # Step 1: Get all restaurants and match name
+    all_restaurants = Restaurant.query.all()
+    restaurant_names = [r.name for r in all_restaurants]
+    best_restaurant_name = get_closest_match(restaurant_name, restaurant_names, context="restaurant names")
+
+    if not best_restaurant_name:
+        return None, None
+
+    matched_restaurant = Restaurant.query.filter_by(name=best_restaurant_name).first()
+    if matched_restaurant is None:
+        return None, None
+
+    # Step 2: Get menu and match item
+    menu_items = matched_restaurant.menu
+    item_names = [item.name for item in menu_items]
+    best_item_name = get_closest_match(item_name, item_names, context="food items from the restaurant menu")
+
+    return matched_restaurant.name, best_item_name
+
 
 
 def scrape_pho_time_data(
