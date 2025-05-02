@@ -12,7 +12,6 @@ SQLAlchemy==1.4.42
 urllib3==1.26.12
 Werkzeug==2.2.2
 torch==2.7.0
-outlines
 transformers==4.38.1
 accelerate
 pillow
@@ -20,3 +19,4 @@ rich
 datasets
 beautifulsoup4
 bs4
+dotenv

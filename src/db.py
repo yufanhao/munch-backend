@@ -34,7 +34,7 @@ class Restaurant(db.Model):
             "id": self.id,
             "name": self.name,
             "address": self.address,
-            "menu": [food.simple_serialize() for food in self.menu],
+            "menu": [food.serialize() for food in self.menu],
         }
 
     def simple_serialize(self):
