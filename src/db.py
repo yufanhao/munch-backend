@@ -111,6 +111,12 @@ class User(db.Model):
     profile_image = db.Column(db.String, nullable=False)
 
     food_reviews = db.relationship("UserFoodReview", back_populates="user")
+    sent_requests = db.relationship(
+        "Request", foreign_keys="[Request.sender_id]", back_populates="sender"
+    )
+    received_requests = db.relationship(
+        "Request", foreign_keys="[Request.receiver_id]", back_populates="receiver"
+    )
 
     foods = db.relationship(
         "Food", secondary=user_food_association_table, back_populates="users"
@@ -137,6 +143,10 @@ class User(db.Model):
             "profile_image": self.profile_image,
             "foods": [food.simple_serialize() for food in self.foods],
             "favorites": [food.simple_serialize() for food in self.favorite_foods],
+            "sent_requests": [sent.serialize() for sent in self.sent_requests],
+            "received_requests": [
+                received.serialize() for received in self.received_requests
+            ],
             "reviews": [
                 {
                     "food": review.food.simple_serialize(),
@@ -157,3 +167,26 @@ class UserFoodReview(db.Model):
 
     user = db.relationship("User", back_populates="food_reviews")
     food = db.relationship("Food", back_populates="user_reviews")
+
+
+class Request(db.Model):
+    __tablename__ = "requests"
+    sender_id = db.Column(db.Integer, db.ForeignKey("users.id"), primary_key=True)
+    receiver_id = db.Column(db.Integer, db.ForeignKey("users.id"), primary_key=True)
+    amount = db.Column(db.Integer, nullable=False)
+    message = db.Column(db.String, nullable=False)
+
+    sender = db.relationship(
+        "User", foreign_keys=[sender_id], back_populates="sent_requests"
+    )
+    receiver = db.relationship(
+        "User", foreign_keys=[receiver_id], back_populates="received_requests"
+    )
+
+    def serialize(self):
+        return {
+            "sender_id": self.sender_id,
+            "receiver_id": self.receiver_id,
+            "ampunt": self.amount,
+            "message": self.message,
+        }

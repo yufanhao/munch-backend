@@ -1,7 +1,7 @@
 from db import db
 from flask import Flask, request
 import json
-from db import Restaurant, User, Food, UserFoodReview
+from db import Restaurant, User, Food, UserFoodReview, Request
 
 
 app = Flask(__name__)
@@ -118,7 +118,7 @@ def delete_restaurant_by_id(restaurant_id):
     """
     Deletes a restaurant by its id from DB
     """
-    restaurant = User.query.filter_by(id=restaurant_id).first()
+    restaurant = Restaurant.query.filter_by(id=restaurant_id).first()
     if restaurant is None:
         return json.dumps({"error": "Restaurant not found!"}), 404
     db.session.delete(restaurant)
@@ -222,8 +222,8 @@ def add_food_to_user(user_id):
     if food is None:
         return json.dumps({"error": "Food not found!"}), 404
     review_count = UserFoodReview.query.filter_by(food_id=food_id).count()
-    avg_rating = (food.avg_rating * review_count + rating) / (review_count + 1)
-    food.update_avg_rating(avg_rating)
+    new_avg_rating = (food.avg_rating * review_count + rating) / (review_count + 1)
+    food.update_avg_rating(new_avg_rating)
     user.foods.append(food)
     db.session.add(review)
     db.session.commit()
@@ -256,6 +256,9 @@ def get_reviews(food_id):
 
 @app.route("/api/food/categories/")
 def get_all_categories():
+    """
+    Gets all food categories
+    """
     foods = Food.query.all()
     categories = []
     for food in foods:
@@ -322,6 +325,58 @@ def get_favorites(user_id):
 
     favorited = [food.serialize() for food in user.favorite_foods]
     return json.dumps({"favorited_foods": favorited}), 200
+
+
+# Request enpoints
+
+
+@app.route("/api/users/<int:user_id>/requests/received/")
+def get_received_requests(user_id):
+    """
+    Gets all requests a user has received
+    """
+    user = User.query.filter_by(id=user_id).first()
+    if user is None:
+        return json.dumps({"error": "User not found!"}), 404
+    received_requests = [
+        received_request.serialize() for received_request in user.received_requests
+    ]
+    return json.dumps({"received_requests": received_requests}), 200
+
+
+@app.route("/api/users/<int:user_id>/requests/sent/")
+def get_sent_requests(user_id):
+    """
+    Gets all requests a user has sent
+    """
+    user = User.query.filter_by(id=user_id).first()
+    if user is None:
+        return json.dumps({"error": "User not found!"}), 404
+    sent_requests = [sent_request.serialize() for sent_request in user.sent_requests]
+    return json.dumps({"sent_requests": sent_requests}), 200
+
+
+@app.route("/api/users/<int:sender_id>/requests/create", methods=["POST"])
+def create_request(sender_id):
+    """
+    Creates a new request and assigns it to a user
+    """
+    body = json.loads(request.data)
+    sender = User.query.filter_by(id=sender_id).first()
+    receiver_id = body.get("receiver_id")
+    receiver = User.query.filter_by(id=receiver_id).first()
+    if sender is None or receiver is None:
+        return json.dumps({"error": "User not found!"}), 404
+
+    amount = body.get("amount")
+    message = body.get("message")
+    new_request = Request(
+        sender_id=sender_id, receiver_id=receiver_id, amount=amount, message=message
+    )
+    # sender.sent_requests.append(new_request)
+    db.session.add(new_request)
+    db.session.commit()
+    return json.dumps(new_request.serialize()), 201
 
 
 if __name__ == "__main__":
