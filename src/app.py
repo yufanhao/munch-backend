@@ -511,29 +511,6 @@ def convert(restaurant_name, item_name):
     return matched_restaurant.name, best_item_name
 
 
-def convert(restaurant_name, item_name):
-    all_restaurants = Restaurant.query.all()
-    restaurant_names = [r.name for r in all_restaurants]
-    best_restaurant_name = get_closest_match(
-        restaurant_name, restaurant_names, context="restaurant names"
-    )
-
-    if not best_restaurant_name:
-        return None, None
-
-    matched_restaurant = Restaurant.query.filter_by(name=best_restaurant_name).first()
-    if matched_restaurant is None:
-        return None, None
-
-    menu_items = matched_restaurant.menu
-    item_names = [item.name for item in menu_items]
-    best_item_name = get_closest_match(
-        item_name, item_names, context="food items from the restaurant menu"
-    )
-
-    return matched_restaurant.name, best_item_name
-
-
 def scrape_pho_time_data(
     url="https://www.ithacatogo.com/order/restaurant/pho-time-vietnamese-menu/45",
 ):
