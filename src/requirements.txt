@@ -19,3 +19,4 @@ pillow
 rich
 datasets
 beautifulsoup4
+bs4

@@ -243,8 +243,8 @@ def add_food_to_user(user_id):
     if food is None:
         return json.dumps({"error": "Food not found!"}), 404
     review_count = UserFoodReview.query.filter_by(food_id=food_id).count()
-    avg_rating = (food.avg_rating * review_count + rating) / (review_count + 1)
-    food.update_avg_rating(avg_rating)
+    new_avg_rating = (food.avg_rating * review_count + rating) / (review_count + 1)
+    food.update_avg_rating(new_avg_rating)
     user.foods.append(food)
     db.session.add(review)
     db.session.commit()
@@ -277,6 +277,9 @@ def get_reviews(food_id):
 
 @app.route("/api/food/categories/")
 def get_all_categories():
+    """
+    Gets all food categories
+    """
     foods = Food.query.all()
     categories = []
     for food in foods:
@@ -344,6 +347,7 @@ def get_favorites(user_id):
     favorited = [food.serialize() for food in user.favorite_foods]
     return json.dumps({"favorited_foods": favorited}), 200
 
+
 @app.route("/api/payment/<int:user_id>/")
 def send_pay_request(user_id):
     """
@@ -360,9 +364,10 @@ def send_pay_request(user_id):
 
     link = f"https://venmo.com/{recipient_username}?txn=pay&amount={payment_amount}&note={encoded_note}"
 
-    #example :https://venmo.com/jasonguo1?txn=pay&amount=15&note=Your+payment+request
+    # example :https://venmo.com/jasonguo1?txn=pay&amount=15&note=Your+payment+request
 
-    return json.dumps({"payment_link":link}),200
+    return json.dumps({"payment_link": link}), 200
+
 
 # New endpoint to run the scraper
 @app.route("/api/scrape/", methods=["POST"])
@@ -372,7 +377,10 @@ def scrape_restaurant():
     """
     success = run_scraper()
     if success:
-        return json.dumps({"success": "Restaurant data scraped and saved to database"}), 200
+        return (
+            json.dumps({"success": "Restaurant data scraped and saved to database"}),
+            200,
+        )
     else:
         return json.dumps({"error": "Failed to scrape restaurant data"}), 500
     
@@ -436,7 +444,31 @@ def convert(restaurant_name, item_name):
     return matched_restaurant.name, best_item_name
 
 
-def scrape_pho_time_data(url="https://www.ithacatogo.com/order/restaurant/pho-time-vietnamese-menu/45"):
+def convert(restaurant_name, item_name):
+    # Step 1: Get all restaurants and match name
+    all_restaurants = Restaurant.query.all()
+    restaurant_names = [r.name for r in all_restaurants]
+    best_restaurant_name = get_closest_match(restaurant_name, restaurant_names, context="restaurant names")
+
+    if not best_restaurant_name:
+        return None, None
+
+    matched_restaurant = Restaurant.query.filter_by(name=best_restaurant_name).first()
+    if matched_restaurant is None:
+        return None, None
+
+    # Step 2: Get menu and match item
+    menu_items = matched_restaurant.menu
+    item_names = [item.name for item in menu_items]
+    best_item_name = get_closest_match(item_name, item_names, context="food items from the restaurant menu")
+
+    return matched_restaurant.name, best_item_name
+
+
+
+def scrape_pho_time_data(
+    url="https://www.ithacatogo.com/order/restaurant/pho-time-vietnamese-menu/45",
+):
     """Scrape restaurant and menu data from Pho Time using BeautifulSoup."""
     try:
         # Send an HTTP request to the URL
@@ -445,162 +477,172 @@ def scrape_pho_time_data(url="https://www.ithacatogo.com/order/restaurant/pho-ti
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         }
         response = requests.get(url, headers=headers)
-        
+
         # Check if the request was successful
         if response.status_code != 200:
             print(f"Failed to retrieve the page. Status code: {response.status_code}")
             return None
-            
+
         # Parse the HTML content
-        soup = BeautifulSoup(response.text, 'html.parser')
-        
+        soup = BeautifulSoup(response.text, "html.parser")
+
         # Extract restaurant information
         restaurant_info = soup.find(class_="media-heading")
         if not restaurant_info:
             print("Could not find restaurant info section")
             return None
-            
+
         restaurant_name = restaurant_info.text.strip()
-        
+
         # Try to find the address
         restaurant_info = soup.find(class_="media-body")
         address_elem = restaurant_info.find(class_="restaurant_menu_info-addresss")
-        restaurant_address = address_elem.text.strip() if address_elem else "Unknown Address, Ithaca, NY"
-        
+        restaurant_address = (
+            address_elem.text.strip() if address_elem else "Unknown Address, Ithaca, NY"
+        )
+
         print(f"Restaurant: {restaurant_name}")
         print(f"Address: {restaurant_address}")
-        
+
         # Extract menu categories and items
         menu_data = []
-        
+
         # Find all menu categories
-        categories = soup.find_all(class_="order_restaurant--restaurant_headings panel panel-default")
-        
+        categories = soup.find_all(
+            class_="order_restaurant--restaurant_headings panel panel-default"
+        )
+
         for category in categories:
-            #print(category)
-            #category_name = category.find('h3').text.strip()
-            #print(f"\nCategory: {category_name}")
-            
+            # print(category)
+            # category_name = category.find('h3').text.strip()
+            # print(f"\nCategory: {category_name}")
+
             # Find menu items within this category
-            menu_items = category.find_all(class_="order_restaurant--menu_item clearfix")
+            menu_items = category.find_all(
+                class_="order_restaurant--menu_item clearfix"
+            )
             for item in menu_items:
                 try:
-                    #order_restaurant--menu_item_name
+                    # order_restaurant--menu_item_name
                     # Extract item name
                     item_title = item.find(class_="order_restaurant--menu_item_name")
                     print(item_title.text.strip())
                     if not item_title:
                         continue
                     item_name = item_title.text.strip()
-                    
+
                     # Extract price
                     price_elem = item.find(class_="menu_item_price")
                     print(price_elem.text.strip())
                     price_text = price_elem.text.strip() if price_elem else "0.0"
-                    
+
                     # Extract numeric price using regex
-                    price_match = re.search(r'\$(\d+\.\d+)', price_text)
+                    price_match = re.search(r"\$(\d+\.\d+)", price_text)
                     if price_match:
                         item_price = float(price_match.group(1))
                     else:
                         # Try to convert directly after removing $ symbol
                         try:
-                            item_price = float(price_text.replace('$', '').strip())
+                            item_price = float(price_text.replace("$", "").strip())
                         except ValueError:
                             item_price = 0.0
-            
-                    
+
                     # Default rating
                     avg_rating = 0  # Default average rating
-                    
-                    menu_data.append({
-                        "name": item_name,
-                        "price": item_price,
-                        "category": "tbd",
-                        "description": "tbd",
-                        "image_url": "fakeurl",
-                        "avg_rating": avg_rating
-                    })
-                    
+
+                    menu_data.append(
+                        {
+                            "name": item_name,
+                            "price": item_price,
+                            "category": "tbd",
+                            "description": "tbd",
+                            "image_url": "fakeurl",
+                            "avg_rating": avg_rating,
+                        }
+                    )
+
                     print(f"  - {item_name}: ${item_price}")
-                    
+
                 except Exception as e:
                     print(f"Error extracting menu item: {e}")
                     continue
-        
+
         return {
-            "restaurant": {
-                "name": restaurant_name,
-                "address": restaurant_address
-            },
-            "menu_items": menu_data
+            "restaurant": {"name": restaurant_name, "address": restaurant_address},
+            "menu_items": menu_data,
         }
-        
+
     except Exception as e:
         print(f"An error occurred during scraping: {e}")
         return None
+
 
 def insert_into_database(data):
     """Insert scraped data into the database."""
     if not data:
         print("No data to insert into database.")
         return False
-    
+
     try:
         # Check if restaurant already exists
-        existing_restaurant = Restaurant.query.filter_by(name=data["restaurant"]["name"]).first()
-        
+        existing_restaurant = Restaurant.query.filter_by(
+            name=data["restaurant"]["name"]
+        ).first()
+
         if False:
-            print(f"Restaurant {data['restaurant']['name']} already exists. Skipping insert.")
+            print(
+                f"Restaurant {data['restaurant']['name']} already exists. Skipping insert."
+            )
             restaurant = existing_restaurant
         else:
             # Create restaurant record
             restaurant = Restaurant(
-                name=data["restaurant"]["name"],
-                address=data["restaurant"]["address"]
+                name=data["restaurant"]["name"], address=data["restaurant"]["address"]
             )
-            
+
             # Add restaurant to session
             db.session.add(restaurant)
             db.session.flush()  # Flush to get restaurant ID
-        
+
         # Create food items
         for item in data["menu_items"]:
             # Check if food item already exists in this restaurant
             existing_food = Food.query.filter_by(
-                name=item["name"], 
-                restaurant_id=restaurant.id
+                name=item["name"], restaurant_id=restaurant.id
             ).first()
-            
+
             if existing_food:
                 print(f"Food item {item['name']} already exists. Skipping insert.")
                 continue
-                
+
             food = Food(
                 name=item["name"],
                 price=item["price"],
                 category=item["category"],
                 img_url=item["image_url"],  # Using image_url from scraper data
                 avg_rating=item["avg_rating"],
-                restaurant_id=restaurant.id
+                restaurant_id=restaurant.id,
             )
             db.session.add(food)
-        
+
         # Commit all changes
         db.session.commit()
-        print(f"Successfully added {data['restaurant']['name']} with menu items to database.")
+        print(
+            f"Successfully added {data['restaurant']['name']} with menu items to database."
+        )
         return True
-        
+
     except Exception as e:
         db.session.rollback()
         print(f"Database error: {e}")
         return False
 
+
 def run_scraper():
     """Run the scraper and insert data into the database."""
     print("Starting scraper...")
     scraped_data = scrape_pho_time_data()
-    
+
     if scraped_data:
         print("\nInserting data into database...")
         success = insert_into_database(scraped_data)
@@ -612,9 +654,9 @@ def run_scraper():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run Flask app with optional scraper")
-    parser.add_argument('--scrape', action='store_true', help='Run scraper on startup')
+    parser.add_argument("--scrape", action="store_true", help="Run scraper on startup")
     args = parser.parse_args()
-    
+
     # Run the scraper if --scrape flag is provided
     if args.scrape:
         with app.app_context():
