@@ -1,5 +1,3 @@
-
-
 from openai import OpenAI
 from PIL import Image
 import base64
@@ -12,9 +10,11 @@ import re
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+
 class Item(BaseModel):
     name: str
     price: Optional[float]
+
 
 class ReceiptSummary(BaseModel):
     store_name: str
@@ -24,15 +24,19 @@ class ReceiptSummary(BaseModel):
     total: Optional[float]
     payment_total: Optional[float]
 
+
 def encode_image(image_bytes, max_size=1024):
     image = Image.open(io.BytesIO(image_bytes))
     width, height = image.size
     scale = min(max_size / width, max_size / height)
     if scale < 1:
-        image = image.resize((int(width * scale), int(height * scale)), Image.Resampling.LANCZOS)
+        image = image.resize(
+            (int(width * scale), int(height * scale)), Image.Resampling.LANCZOS
+        )
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
     return base64.b64encode(buffer.getvalue()).decode("utf-8")
+
 
 def parse_receipt(image_bytes: bytes) -> str:
     base64_image = encode_image(image_bytes)
@@ -74,7 +78,7 @@ def parse_receipt(image_bytes: bytes) -> str:
         max_tokens=1000,
     )
 
-# Parse the string content into a Python dictionary
+    # Parse the string content into a Python dictionary
     content = response.choices[0].message.content
     # Extract JSON from markdown or text
     match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", content, re.DOTALL)
