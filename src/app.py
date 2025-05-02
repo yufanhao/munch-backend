@@ -391,7 +391,7 @@ def get_favorites(user_id):
     return json.dumps({"favorited_foods": favorited}), 200
 
 
-@app.route("/api/payment/<int:user_id>/")
+@app.route("/api/payment/<int:user_id>/", methods=["POST"])
 def send_pay_request(user_id):
     """
     Gets all favorited items of a user

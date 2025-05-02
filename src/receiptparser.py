@@ -43,7 +43,8 @@ def parse_receipt(image_bytes: bytes) -> str:
 
     Please extract the information from the receipt. Be as detailed as possible — 
     missing or misreporting information is a crime. Be sure to include Tips and Payment Total. Duplicate items 
-    should be accounted for and listed separately.
+    should be accounted for and listed separately. If one of the fields in the JSON can not be found in
+    the receipt, it should be 0 for any number type values and empty string for any string values.
 
     Return the information in the following JSON schema:
 
