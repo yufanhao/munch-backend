@@ -106,7 +106,8 @@ def create_restaurant():
     body = json.loads(request.data)
     name = body.get("name")
     address = body.get("address")
-    if name is None or address is None:
+    image_url = body.get("image_url")
+    if name is None or address is None or image_url is None:
         return json.dumps({"error": "Invalid input"}), 400
     new_restaurant = Restaurant(**body)
     db.session.add(new_restaurant)
@@ -190,6 +191,7 @@ def create_food(restaurant_id):
     price = body.get("price")
     category = body.get("category")
     image_url = body.get("image_url")
+    initial_rating = body.get("initial_rating")
     if name is None or price is None or category is None:
         return json.dumps({"error": "Invalid input"}), 400
     new_food = Food(
@@ -197,7 +199,7 @@ def create_food(restaurant_id):
         price=price,
         category=category,
         image_url=image_url,
-        avg_rating=0,
+        avg_rating=initial_rating,
         restaurant_id=restaurant_id,
     )
     db.session.add(new_food)
@@ -262,20 +264,22 @@ def add_food_to_user(user_id):
     db.session.commit()
     return json.dumps(user.serialize()), 201
 
-@app.route("/api/food/reviews/", methods = ["POST"])
+
+@app.route("/api/food/reviews/", methods=["POST"])
 def create_review():
     data = request.get_json()
 
     review = UserFoodReview(
-        user_id=data['user_id'],
-        food_id=data['food_id'],
-        rating=data['rating'],
-        review=data['review']
+        user_id=data["user_id"],
+        food_id=data["food_id"],
+        rating=data["rating"],
+        review=data["review"],
     )
     db.session.add(review)
     db.session.commit()
 
-    return json.dumps({'message': 'Review created successfully'}), 201
+    return json.dumps({"message": "Review created successfully"}), 201
+
 
 @app.route("/api/food/<int:food_id>/reviews/")
 def get_reviews(food_id):

@@ -23,17 +23,20 @@ class Restaurant(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String, nullable=False)
     address = db.Column(db.String, nullable=False)
+    image_url = db.Column(db.String, nullable=False)
     menu = db.relationship("Food", cascade="delete")
 
     def __init__(self, **kwargs):
         self.name = kwargs.get("name", "")
         self.address = kwargs.get("address", "")
+        self.image_url = kwargs.get("image_url", "")
 
     def serialize(self):
         return {
             "id": self.id,
             "name": self.name,
             "address": self.address,
+            "image_url": self.image_url,
             "menu": [food.serialize() for food in self.menu],
         }
 
