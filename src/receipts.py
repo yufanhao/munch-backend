@@ -1,8 +1,4 @@
-import outlines
-import torch
-from transformers import AutoProcessor
-from pydantic import BaseModel, Field
-from typing import Literal, Optional, List
+import re
 from PIL import Image
 import requests
 from rich import print
@@ -24,13 +20,15 @@ model = outlines.models.transformers_vision(
     # processor_kwargs={
     #     "device": "cuda",
     # },
+import pytesseract
+
+# Optional: set path to tesseract if not in PATH (Windows users)
+pytesseract.pytesseract.tesseract_cmd = (
+    r"C:\Users\fanha\AppData\Local\Programs\Tesseract-OCR"
 )
 
 
-def load_and_resize_image(image_path, max_size=1024):
-    """
-    Load and resize an image while maintaining aspect ratio to lessen computational load
-    """
+def extract_items_from_receipt(image_path):
     image = Image.open(image_path)
     width, height = image.size
     scale = min(max_size / width, max_size / height)
@@ -43,18 +41,17 @@ def load_and_resize_image(image_path, max_size=1024):
 
 
 # need to get image from frontend
-#image_path = "https://raw.githubusercontent.com/dottxt-ai/outlines/refs/heads/main/docs/cookbook/images/trader-joes-receipt.jpg"
-#response = requests.get(image_path)
-#with open("receipt.png", "wb") as f:
-#    f.write(response.content)
-#image = load_and_resize_image("receipt.png")
-
-image_path = "/Users/jasonguo/Desktop/backend/munch-backend/src/pho_receipt.png"  # e.g., "my_receipts/receipt1.png"
-image = load_and_resize_image(image_path)
+image_path = "https://raw.githubusercontent.com/dottxt-ai/outlines/refs/heads/main/docs/cookbook/images/trader-joes-receipt.jpg"
+response = requests.get(image_path)
+with open("receipt.png", "wb") as f:
+    f.write(response.content)
+image = load_and_resize_image("receipt.png")
 
 
 class Item(BaseModel):
     name: str
+    quantity: Optional[int]
+    price_per_unit: Optional[float]
     total_price: Optional[float]
 
 
@@ -64,9 +61,7 @@ class ReceiptSummary(BaseModel):
     store_number: Optional[int]
     items: List[Item]
     tax: Optional[float]
-    tips: Optional[float]
     total: Optional[float]
-    payment_total: Optional[float]
     date: Optional[str] = Field(
         pattern=r"\d{4}-\d{2}-\d{2}", description="Date in the format YYYY-MM-DD"
     )
@@ -88,8 +83,7 @@ messages = [
                 "type": "text",
                 "text": f"""You are an expert at extracting information from receipts.
                 Please extract the information from the receipt. Be as detailed as possible --
-                missing or misreporting information is a crime. Be sure to include Tips and Payment Total. Duplicate items 
-                should be accounted for and listed separately.
+                missing or misreporting information is a crime.
 
                 Return the information in the following JSON schema:
                 {ReceiptSummary.model_json_schema()}
@@ -129,7 +123,7 @@ thread = threading.Thread(target=run_model)
 thread.start()
 
 # Show a simple progress indicator
-timeout = 600  # seconds
+timeout = 120  # seconds
 start_time = time.time()
 print("Generating", end="", flush=True)
 

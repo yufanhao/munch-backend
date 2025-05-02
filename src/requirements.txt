@@ -14,6 +14,7 @@ Werkzeug==2.2.2
 torch==2.7.0
 outlines
 transformers==4.38.1
+pytesseract
 accelerate
 pillow
 rich

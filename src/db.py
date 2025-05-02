@@ -73,7 +73,6 @@ class Food(db.Model):
         self.avg_rating = kwargs.get("avg_rating", "")
 
     def update_avg_rating(self, new_avg_rating):
-        reviews = UserFoodReview.query.filter_by(food_id=self.id).all()
         self.avg_rating = new_avg_rating
         db.session.commit()
 
@@ -109,6 +108,7 @@ class User(db.Model):
     email = db.Column(db.String, nullable=False)
     phone = db.Column(db.Integer, nullable=False)
     venmo = db.Column(db.String, nullable=False)
+    profile_image = db.Column(db.String, nullable=False)
 
     food_reviews = db.relationship("UserFoodReview", back_populates="user")
 
@@ -125,6 +125,7 @@ class User(db.Model):
         self.email = kwargs.get("email", "")
         self.phone = kwargs.get("phone", 0)
         self.venmo = kwargs.get("venmo", "")
+        self.profile_image = kwargs.get("profile_image", "")
 
     def serialize(self):
         return {
@@ -133,6 +134,7 @@ class User(db.Model):
             "email": self.email,
             "phone": self.phone,
             "venmo": self.venmo,
+            "profile_image": self.profile_image,
             "foods": [food.simple_serialize() for food in self.foods],
             "favorites": [food.simple_serialize() for food in self.favorite_foods],
             "reviews": [
