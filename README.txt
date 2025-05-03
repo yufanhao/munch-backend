@@ -1,1 +1,0 @@
-Authors: Fanhao Yu, Jason Guo, Andrew Gao, and Jimmy Chen
