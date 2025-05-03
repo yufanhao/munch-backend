@@ -28,8 +28,11 @@ Return only the best matching string. Do not include any explanation or extra te
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "You are a helpful assistant for fuzzy matching."},
-                {"role": "user", "content": prompt}
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant for fuzzy matching.",
+                },
+                {"role": "user", "content": prompt},
             ],
             temperature=0.0,
         )

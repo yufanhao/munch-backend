@@ -10,9 +10,6 @@ import requests
 from bs4 import BeautifulSoup
 import re
 import argparse
-
-##
-
 from convert import get_closest_match
 from receiptparser import parse_receipt
 
@@ -28,6 +25,11 @@ with app.app_context():
     db.create_all()
 
 # User endpoints
+
+
+@app.route("/")
+def hello():
+    return json.dumps({"hi": "hello world"})
 
 
 @app.route("/api/users/")
@@ -706,4 +708,4 @@ if __name__ == "__main__":
     if args.scrape:
         with app.app_context():
             run_scraper()
-    app.run(host="0.0.0.0", port=5001, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)

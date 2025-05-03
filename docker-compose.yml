@@ -1,0 +1,8 @@
+version: "3"
+services:
+  munch:
+    image: yufanhao12/munch:1.0.1
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
