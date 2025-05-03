@@ -28,8 +28,8 @@ with app.app_context():
 
 
 @app.route("/")
-def hello():
-    return json.dumps({"hi": "hello world"})
+def welcome():
+    return json.dumps("Welcome to munch!")
 
 
 @app.route("/api/users/")
