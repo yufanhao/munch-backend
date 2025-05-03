@@ -1,7 +1,7 @@
 
 # Munch
 
-🥇 Built with care @ Cornell AppDev Hackathon – a platform to **track meals**, **review foods**, and **split the bill** with friends.
+Cornell AppDev Hackathon – a platform to **track meals**, **review foods**, and **split the bill** with friends. Snap. Split. Rate. Dining made easy.
 
 🍽️ A feature-rich backend for **restaurant discovery**, **receipt parsing**, and **payment coordination** is fully functional and deployed!
 
@@ -27,7 +27,7 @@
 
 **MunchMate** is a social food tracking application that allows users to:
 
-- Log their favorite meals  
+- Log their favorite meals and restaurant items
 - Review and rate food from local restaurants  
 - Automatically extract itemized data from receipts  
 - Split the bill and generate Venmo payment links  
@@ -105,14 +105,17 @@ Each model implements a `.serialize()` method to cleanly output JSON.
 
 ### 🧾 Receipt Parsing
 - Upload receipt images  
-- Parse itemized data using GPT-4o  
-- Auto-split receipt items between friends (pending UI)  
+- Parse itemized data using GPT-4o
+
+- ### 🍽️ Menu Scraping
+- Proof of concept automatic menu scraping for Pho Time using beautiful soup
+- Scraping for multiple menus coming in future
 
 ### 🔍 Fuzzy Matching
-- Convert scanned receipt items to best-match database entries using OpenAI  
+- Convert scanned receipt items to best-match database entries using OpenAI
 
 ### 💸 Payment Coordination
-- Generate Venmo links pre-filled with message and amount  
+- Generate Venmo deeplinks pre-filled with message and amount  
 - Request payments between users  
 
 ---
