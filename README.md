@@ -19,7 +19,7 @@ Cornell AppDev Hackathon – a platform to **track meals**, **review foods**, an
 - [Relationships](#relationships)  
 - [Key Features](#key-features)  
 - [API Endpoints Overview](#api-endpoints-overview)  
-- [Appendix](#appendix)
+- [Additional](#additional)
 
 ---
 
@@ -104,11 +104,11 @@ Each model implements a `.serialize()` method to cleanly output JSON.
 - Scrape restaurants (currently Pho Time) with one command  
 
 ### 🧾 Receipt Parsing
-- Upload receipt images  
-- Parse itemized data using GPT-4o
+- Upload receipt images
+- Parse itemized data from resized standardized image using GPT-4o
 
 - ### 🍽️ Menu Scraping
-- Proof of concept automatic menu scraping for Pho Time using beautiful soup
+- Proof of concept automatic menu scraping for Pho Time using Beautiful Soup
 - Scraping for multiple menus coming in future
 
 ### 🔍 Fuzzy Matching
@@ -167,7 +167,7 @@ All routes are described in the API specification. All responses are JSON-format
 
 ---
 
-## Appendix
+## Additional
 
 ### I. Authentication
 
@@ -175,18 +175,95 @@ Authentication is currently not enforced. Future versions may implement:
 
 - Firebase Auth  
 - OAuth for social login  
-- Admin-level token permissions  
+- Admin-level token permissions
 
-### II. Sample Response: Food Review
+### Sample Responses: 
+
+### I. Create a New User
 
 ```json
+POST /api/users/
+Request:
 {
-  "id": 1,
   "username": "jjasonguo",
-  "review": "pho 1 is delicious",
-  "rating": 4.1,
+  "password": "password123",
+  "email": "jhg294@cornell.edu",
+  "phone": "7814676237",
   "profile_image": "http://example.com/image.jpg"
 }
+
+Response:
+<HTTP STATUS CODE 201>
+{
+  "users": [
+    {
+      "id": <USER_ID>,
+      "username": "jjasonguo",
+      "email": "jhg294@cornell.edu",
+      "phone": "7814676237",
+      "venmo": "jasonguo1",
+      "profile_image": "http://example.com/image.jpg",
+      "foods": [<serialized food>],
+      "received_requests": [<serialized requests>],
+      "reviews": [
+        {
+          "food": [<simple serialized foods>],
+          "rating": "4.5",
+          "review": "Great meal"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### II. Parse Receipt
+
+```json
+Upload receipt image
+POST /api/receipts/
+ Form-data with "image" key.
+
+
+Response
+<HTTP STATUS CODE 200>
+[
+  {
+    "assigned_friends": [],
+    "items": [
+        {
+            "id": 1,
+            "name": "Chicken Wings (6)",
+            "price": 8.5
+        },
+        {
+            "id": 2,
+            "name": "P12. Chicken Pho",
+            "price": 12.0
+        },
+        {
+            "id": 3,
+            "name": "P1. House Pho 1 - Pho Xe Lua",
+            "price": 14.95
+        },
+        {
+            "id": 4,
+            "name": "P1. House Pho 1 - Pho Xe Lua",
+            "price": 14.95
+        },
+        {
+            "id": 5,
+            "name": "P2. House Pho 2",
+            "price": 14.95
+        }
+    ],
+    "payment_total": 83.29,
+    "store_name": "Asian chili spot and Photime",
+    "tax": 5.23,
+    "tips": 12.71,
+    "total": 70.58
+  }
+]
 ```
 
 ### III. Venmo Payment
@@ -203,4 +280,59 @@ Response:
 {
   "payment_link": "https://venmo.com/jasonguo1?txn=pay&amount=15&note=Lunch+payment"
 }
+```
+
+### IV. Get foods by category
+
+```json
+Get all foods by category
+GET /api/{category}/foods/
+Response
+<HTTP STATUS CODE 200>
+[
+  {
+      "id": <id>,
+"name": “Big Mac”,
+"price": 5.99,
+"category": “Burger”,
+"image_url": “http://example.com/image.jpg”,
+"avg_rating": 3.9,
+"restaurant": [<serialized restaurant for food>],
+  }, 
+{
+      "id": <id>,
+"name": “Quarter Pounder”,
+"price": 5.99,
+"category": “Burger”,
+"image_url": “http://example.com/image.jpg”,
+"avg_rating": 3.9,
+"restaurant": [<serialized restaurant for food>],
+  }, 
+	...
+]
+```
+
+### V. Get restaurant menu
+```json
+Get a restaurant’s menu
+GET /api/restaurants/{id}/menu/
+Response
+<HTTP STATUS CODE 200>
+[
+  {
+    "id": 1,
+    "name": "Beef Pho",
+    “price”: “14.95”,
+ 	...
+  },
+{
+    "id": 2,
+    "name": "Chicken Pho",
+    “price”: “13.95”,
+ 	...
+  },
+  ...
+]
+
+]
 ```
