@@ -7,6 +7,7 @@ Cornell AppDev Hackathon – a platform to **track meals**, **review foods**, an
 
 🔨 Backend Developers: Jason Guo, Fanhao Yu  
 📱 Frontend Developers and Repository: Andrew Gao, Jimmy Chen
+[Frontend Repository Link](https://github.com/AndrewG828/munch-ios/tree/main)
 
 ---
 
